@@ -33,10 +33,11 @@ To run the backup script, use the following options:
 
 | Option | Description | Status | Needs Option |
 |------------------------------|----------------------------------|-------|------|
-| -d <source-dir> (str):    | Path to source dir.              | required | |
-| -b <dir-for-backup> (str):| Path to dir for backups.         | required | |
+| -d <source-dir> (str):    | Path to source dir.              | REQUIRED | |
+| -b <dir-for-backup> (str):| Path to dir for backups.         | REQUIRED | |
 | -l <log-file-path> (str): | Path to log file. Default: /var/log/backup.log | optional | |
 | -n <backup-name> (str):   | Name for backup. Default: YYYY-dd-mm_HH-MM-SS | optional | |
+| -t <percent> (1-100):     | You can set a threshold value on the disk at which new backups will no longer be created. By default, copies will not be created if there is no free space on the disk at all. | optional | |
 
 ### Backup with encrypted GPG
 
@@ -50,8 +51,8 @@ To run the backup script, use the following options:
 | Option | Description | Status | Needs Option |
 |--------|-------------|--------|--------------| 
 | -f <s3cmd-cnf-path> (str): | Path to configuration file for s3cmd Default: /home/<UID>/.s3cmd. | optional | -o |
-| -o <s3-send> (TRUE\|FALSE): | Whether the backup will be sent to the object storage. to the object storage. Note: this script does not automatically configure s3cmd and does not create a bucket. He just sends him there. | optional | |
-| -t <bucket-name> (str): | The name of the bucket to which the backup will be sent. | optinal | -o |
+| -S <s3-send> (TRUE\|FALSE): | Whether the backup will be sent to the object storage. to the object storage. Note: this script does not automatically configure s3cmd and does not create a bucket. He just sends him there. | optional | |
+| -B <bucket-name> (str): | The name of the bucket to which the backup will be sent. | optinal | -o |
 | -c <encrypt> (TRUE\|FALSE): | If you did not use the [ -d ] option to delete the unencrypted backup version, then you can choose which version to send to the s3 Bucket. Default: FALSE | optional | -o -g |
 
 ## Examples
@@ -76,7 +77,7 @@ To run the backup script, use the following options:
   *The -d option allows you to delete the unencrypted archim and leave only its encrypted version.*
 - Creating a backup and sending it to the object storage:
   ```bash
-  ./letsbackup.sh -s ./src -d ./dst -o -t mybucket
+  ./letsbackup.sh -s ./src -d ./dst -S -B mybucket
   ```
   Result: we will get a backup in the object storage.
 - Log file output example:
