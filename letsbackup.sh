@@ -4,7 +4,7 @@ set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd")
+DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "date")
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
@@ -13,6 +13,7 @@ BUCKET=""
 S3_SEND="FALSE"
 S3CMD_CONF=""
 SEND_ENCRYPT_BACKUP="FALSE"
+SPACE_THRESHOLD=100
 
 usage() {
     printf "
@@ -45,6 +46,13 @@ Details:
                                                                      |
                                    Default: YYYY-dd-mm_HH-MM-SS      |  
     -----------------------------------------------------------------+
+    [ -t <percent> (1-100) ]:      You can set a threshold value on  | optional
+                                   the disk at which new backups     |
+                                   will no longer be created.        |
+                                   By default, copies will not be    |
+                                   created if there is no free space |
+                                   on the disk at all.               |
+    -----------------------------------------------------------------+
 
                        Backup with encrypted:
 
@@ -71,14 +79,14 @@ Details:
                                    s3cmd.                            |
                                    Default: /home/<UID>/.s3cmd       |
     -----------------------------------------------------------------|
-    [ -o <s3-send> (TRUE|FALSE) ]: Whether the backup will be sent   | optional
+    [ -S <s3-send> (TRUE|FALSE) ]: Whether the backup will be sent   | optional
                                    to the object storage.            | 
                                    Note: this script does not        |
                                    automatically configure s3cmd and |
                                    does not create a bucket.         |
                                    He just sends him there.          |
     -----------------------------------------------------------------|
-    [ -t <bucket-name> (str) ]:    The name of the bucket to which   | optional 
+    [ -B <bucket-name> (str) ]:    The name of the bucket to which   | optional 
                                    the backup will be sent.          | 
                                                                      |
                                    NEEDS: [ -o ]                     |
@@ -205,6 +213,30 @@ backup() {
 
 }
 
+disk_space_threshold_check() {
+
+    local current_disk_avail="$(df -x tmpfs | nl -nln | awk '/^[2-9]+ /{totalAvail+=$5} END {print totalAvail}')"
+    local current_disk_size="$(df -x tmpfs | nl -nln | awk '/^[2-9]+ /{totalSize+=$3} END {print totalSize}')"
+    local disk_space_usage_percent="$(echo "(1 - ${current_disk_avail} / ${current_disk_size}) * 100" | bc -l | awk -F. '{print $1}')"
+
+    if [[ ${disk_space_usage_percent} -ge ${SPACE_THRESHOLD} ]]; then
+        log "CRITICAL" "NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB EXIT"
+        printf "letsbackup.sh: FAILED, NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB\n"
+        exit 1
+    fi
+}
+
+threshold_value_validate() {
+    local min="1"
+    local max="100"
+
+    if [[ ! ${SPACE_THRESHOLD} -ge ${min} || ! ${SPACE_THRESHOLD} -le ${max}  ]]; then
+        log "CRITICAL" "THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max} EXIT"
+        printf "letsbackup.sh: FAILED, THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max}\n"
+        exit 1
+    fi
+}
+
 backup_encrypt() {
     trap 'rm -rf /tmp/*backupshOUTPUT' SIGINT SIGTERM SIGHUP
 
@@ -256,7 +288,7 @@ s3cmd_conf_validate() {
     exit 1
 }
 
-while getopts ":s:b:n:hl:g:dof:t:c" opt; do
+while getopts ":s:b:n:hl:g:dSf:B:ct:" opt; do
     case $opt in
         s) SOURCE_DIR="${OPTARG%/}"
         ;;
@@ -270,13 +302,15 @@ while getopts ":s:b:n:hl:g:dof:t:c" opt; do
         ;;
         d) UNENCRYPT_BACKUP_DEL="TRUE"
         ;;
-        o) S3_SEND="TRUE"
+        S) S3_SEND="TRUE"
         ;;
         f) S3CMD_CONF="${OPTARG}"
         ;;
-        t) BUCKET="${OPTARG}"
+        B) BUCKET="${OPTARG}"
         ;;
         c) SEND_ENCRYPT_BACKUP="TRUE"
+        ;;
+        t) SPACE_THRESHOLD="${OPTARG}"
         ;;
         h)
            usage
@@ -301,6 +335,10 @@ log_file_validate
 check_dir_permissions "r" "${SOURCE_DIR}"
 
 check_dir_permissions "w" "${BACKUP_DIR}"
+
+threshold_value_validate
+
+disk_space_threshold_check
 
 backup
 
