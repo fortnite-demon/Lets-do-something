@@ -9,7 +9,7 @@ This script automates the process of creating, encrypting, and uploading backups
 - **S3 Upload**: Uploads backups to an AWS S3 bucket.
 - **Logging**: Provides detailed logs for process tracking and error diagnosis.
 
-## Requirements
+## Dependencies
 
 Ensure the following dependencies are installed on your system:
 
@@ -20,6 +20,10 @@ Ensure the following dependencies are installed on your system:
 - `gzip`
 - `gpg`
 - `s3cmd`
+
+## The specifics of the work
+
+letsbackup.sh uses different dependencies (you can read about them in the dependencies section) and when working with it, you need to take this into account. For example, letsbackup.sh uses s3cmd to send backups to S3 storage, you should consider that if you are using the -o option (which allows you to specify letsbackup.sh , about the need to send backup to the repository) if you do not specify -f (the path to the s3cmd configuration file), then you are using the configuration file at the path /home/<UID>/.s3cfg. letsbackup also uses GPG to encrypt backups, your GPG key must first be added to the ring.
 
 ## Usage
 
