@@ -4,7 +4,7 @@ set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee")
+DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "date")
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
@@ -13,7 +13,7 @@ BUCKET=""
 S3_SEND="FALSE"
 S3CMD_CONF=""
 SEND_ENCRYPT_BACKUP="FALSE"
-SPACE_THRESHOLD=""
+SPACE_THRESHOLD=100
 
 usage() {
     printf "
@@ -213,8 +213,28 @@ backup() {
 
 }
 
-disk_space_check() {
+disk_space_threshold_check() {
 
+    local current_disk_avail="$(df -x tmpfs | nl -nln | awk '/^[2-9]+ /{totalAvail+=$5} END {print totalAvail}')"
+    local current_disk_size="$(df -x tmpfs | nl -nln | awk '/^[2-9]+ /{totalSize+=$3} END {print totalSize}')"
+    local disk_space_usage_percent="$(echo "(1 - ${current_disk_avail} / ${current_disk_size}) * 100" | bc -l | awk -F. '{print $1}')"
+
+    if [[ ${disk_space_usage_percent} -ge ${SPACE_THRESHOLD} ]]; then
+        log "CRITICAL" "NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB EXIT"
+        printf "letsbackup.sh: FAILED, NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB\n"
+        exit 1
+    fi
+}
+
+threshold_value_validate() {
+    local min="1"
+    local max="100"
+
+    if [[ ! ${SPACE_THRESHOLD} -ge ${min} || ! ${SPACE_THRESHOLD} -le ${max}  ]]; then
+        log "CRITICAL" "THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max} EXIT"
+        printf "letsbackup.sh: FAILED, THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max}\n"
+        exit 1
+    fi
 }
 
 backup_encrypt() {
@@ -268,7 +288,7 @@ s3cmd_conf_validate() {
     exit 1
 }
 
-while getopts ":s:b:n:hl:g:dSf:B:c" opt; do
+while getopts ":s:b:n:hl:g:dSf:B:ct:" opt; do
     case $opt in
         s) SOURCE_DIR="${OPTARG%/}"
         ;;
@@ -315,6 +335,10 @@ log_file_validate
 check_dir_permissions "r" "${SOURCE_DIR}"
 
 check_dir_permissions "w" "${BACKUP_DIR}"
+
+threshold_value_validate
+
+disk_space_threshold_check
 
 backup
 
