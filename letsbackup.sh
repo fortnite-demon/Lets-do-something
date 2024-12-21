@@ -4,7 +4,7 @@ set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd")
+DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee")
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
@@ -13,6 +13,7 @@ BUCKET=""
 S3_SEND="FALSE"
 S3CMD_CONF=""
 SEND_ENCRYPT_BACKUP="FALSE"
+SPACE_THRESHOLD=""
 
 usage() {
     printf "
@@ -71,14 +72,14 @@ Details:
                                    s3cmd.                            |
                                    Default: /home/<UID>/.s3cmd       |
     -----------------------------------------------------------------|
-    [ -o <s3-send> (TRUE|FALSE) ]: Whether the backup will be sent   | optional
+    [ -S <s3-send> (TRUE|FALSE) ]: Whether the backup will be sent   | optional
                                    to the object storage.            | 
                                    Note: this script does not        |
                                    automatically configure s3cmd and |
                                    does not create a bucket.         |
                                    He just sends him there.          |
     -----------------------------------------------------------------|
-    [ -t <bucket-name> (str) ]:    The name of the bucket to which   | optional 
+    [ -B <bucket-name> (str) ]:    The name of the bucket to which   | optional 
                                    the backup will be sent.          | 
                                                                      |
                                    NEEDS: [ -o ]                     |
@@ -205,6 +206,10 @@ backup() {
 
 }
 
+disk_space_check() {
+
+}
+
 backup_encrypt() {
     trap 'rm -rf /tmp/*backupshOUTPUT' SIGINT SIGTERM SIGHUP
 
@@ -256,7 +261,7 @@ s3cmd_conf_validate() {
     exit 1
 }
 
-while getopts ":s:b:n:hl:g:dof:t:c" opt; do
+while getopts ":s:b:n:hl:g:dSf:B:c" opt; do
     case $opt in
         s) SOURCE_DIR="${OPTARG%/}"
         ;;
@@ -270,11 +275,11 @@ while getopts ":s:b:n:hl:g:dof:t:c" opt; do
         ;;
         d) UNENCRYPT_BACKUP_DEL="TRUE"
         ;;
-        o) S3_SEND="TRUE"
+        S) S3_SEND="TRUE"
         ;;
         f) S3CMD_CONF="${OPTARG}"
         ;;
-        t) BUCKET="${OPTARG}"
+        B) BUCKET="${OPTARG}"
         ;;
         c) SEND_ENCRYPT_BACKUP="TRUE"
         ;;
