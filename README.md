@@ -20,6 +20,10 @@ Ensure the following dependencies are installed on your system:
 - `gzip`
 - `gpg`
 - `s3cmd`
+- `df`
+- `awk`
+- `bc`
+- `nl`
 
 ## The specifics of the work
 
