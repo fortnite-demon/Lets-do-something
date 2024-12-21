@@ -114,7 +114,7 @@ Details:
 log() {
     local severity="${1}"
     local message="${2}"
-    echo "[$(date +%Y-%d-%m)|$(date +%T.%2N)] :${severity}: ${message}" &>> "${LOG_FILE_PATH}"
+    echo -e "[$(date +%Y-%d-%m)|$(date +%T.%2N)] :${severity}: ${message}" &>> "${LOG_FILE_PATH}"
 }
 
 log_file_validate() {
@@ -125,16 +125,16 @@ log_file_validate() {
 
     if [[ -f ${LOG_FILE_PATH} ]]; then
         if [[ ! -w ${LOG_FILE_PATH} ]]; then
-            printf "letsbackup.sh: FAILED, <${LOG_FILE_PATH}> not access write!\nLOG:${temp_output_file}\n" | tee -a ${temp_output_file} >&2
+            echo "letsbackup.sh: FAILED, <${LOG_FILE_PATH}> not access write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
             exit 1
         fi
         return 0
     fi
     if [[ -d ${LOG_FILE_PATH} ]]; then
-        printf "letsbakcup.sh: FAILED, <${LOG_FILE_PATH}> is directory!\nLOG:${temp_output_file}\n" | tee -a ${temp_output_file} >&2
+        echo "letsbakcup.sh: FAILED, <${LOG_FILE_PATH}> is directory!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
         exit 1
     elif [[ ! -w ${logfile_dir_name} ]]; then
-        printf "letsbakcup.sh: FAILED, dir <${logfile_dir_name}> for logfile not access to write!\nLOG:${temp_output_file}\n" | tee -a ${temp_output_file} >&2
+        echo "letsbakcup.sh: FAILED, dir <${logfile_dir_name}> for logfile not access to write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
         exit 1
     fi
 
@@ -150,19 +150,19 @@ check_dir_permissions() {
         if [[ ${mode} = "w" ]]; then
             if [[ ! -w ${dir_path} ]]; then
                 log "CRITICAL" "<${dir_path}> DIR NOT ACCES TO WRITE! EXIT"
-                printf "letsbackup.sh: FAILED, <${dir_path}> dir not access to write! EXIT\n" >&2
+                echo "letsbackup.sh: FAILED, <${dir_path}> dir not access to write! EXIT" >&2
                 exit 1
             fi
         elif [[ ${mode} = "r" ]]; then
             if [[ ! -r ${dir_path} ]]; then
                 log "CRITICAL" "<${dir_path}> DIR NOT ACCES TO READ! EXIT"
-                printf "letsbackup.sh: FAILED, <${dir_path}> dir not access to read! EXIT\n" >&2
+                echo "letsbackup.sh: FAILED, <${dir_path}> dir not access to read! EXIT" >&2
                 exit 1
             fi
         fi
     else
         log "CRITICAL" "<${dir_path}> DIR NOT FOUND! EXIT"
-        printf "letsbackup.sh: FAILED, <${dir_path}> dir not found!\n" >&2
+        echo "letsbackup.sh: FAILED, <${dir_path}> dir not found!" >&2
         exit 1
     fi
 }
@@ -174,7 +174,7 @@ check_dependencies() {
     for dependence in ${dependencies[@]}; do
         if ! command -v ${dependence} &> /dev/null; then
             log "CRITICAL" "DEPENDENCE <${dependence}> REQUIRED! EXIT"
-            echo "letsbackup.sh: FAILED, dependence <${dependence}> REQUIRED!\n" >&2
+            echo "letsbackup.sh: FAILED, dependence <${dependence}> REQUIRED!" >&2
             exit 1
         fi
     done
@@ -187,10 +187,13 @@ check_step_for_falure() {
         if [[ -n $3 ]]; then
             local output="$(cat $3)"
             log "${severity}" "${message}\n${output}" 
-            printf "backup.sh: ${severity}, ${message}\n${output}" >&2
+            { \
+                echo "letsbackup.sh: ${severity}, ${message}";
+                echo "${output}";
+            } >&2
         else
             log "${severity}" "${message}"
-            printf "backup.sh: FAILED, ${message}\n" >&2
+            echo "backup.sh: FAILED, ${message}" >&2
         fi
         rm -rf ${2} &> /dev/null
     fi
@@ -202,12 +205,12 @@ backup() {
     local temp_output_file="$(mktemp --suffix=backupshOUTPUT$(date +%Y-%m-%d_%T))"
 
     log "INFO" "Start backup process..."
-    printf "letsbackup.sh: INFO, Start backup process...\n"
+    echo "letsbackup.sh: INFO, Start backup process..."
     tar -czvf ${BACKUP_DIR}/${BACKUP_NAME} -C ${SOURCE_DIR} . 2> ${temp_output_file} > /dev/null
     check_step_for_falure "CRITICAL" "BACKUP PROCESS FAILURE! EXIT MORE:\n" "${temp_output_file}"
 
     log "INFO" "Backup process SUCCESS! Backup Info: name=\"${BACKUP_DIR}/${BACKUP_NAME}\", size=\"$(ls -tlh | nl -nln | awk '/^2 /{print $6; exit}')\""
-    printf "letsbackup.sh: INFO, Backup process SUCCESS!\n"
+    echo "letsbackup.sh: INFO, Backup process SUCCESS!"
 
     rm -rf "${temp_output_file}" &> /dev/null
 
@@ -221,7 +224,7 @@ disk_space_threshold_check() {
 
     if [[ ${disk_space_usage_percent} -ge ${SPACE_THRESHOLD} ]]; then
         log "CRITICAL" "NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB EXIT"
-        printf "letsbackup.sh: FAILED, NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB\n"
+        echo "letsbackup.sh: FAILED, NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB"
         exit 1
     fi
 }
@@ -230,9 +233,15 @@ threshold_value_validate() {
     local min="1"
     local max="100"
 
+    echo "${SPACE_THRESHOLD}" | grep -P "^\d+$" &>/dev/null || { \
+        log "CRITICAL" "THIS SPACE_THRESHOLD VALUE: ${SPACE_THRESHOLD} NOT SUPPORTED! EXIT";
+        echo "letsbackup.sh: FAILED, THIS SPACE_THRESHOLD VALUE: ${SPACE_THRESHOLD} NOT SUPPORTED!";
+        exit 1;
+    }
+
     if [[ ! ${SPACE_THRESHOLD} -ge ${min} || ! ${SPACE_THRESHOLD} -le ${max}  ]]; then
         log "CRITICAL" "THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max} EXIT"
-        printf "letsbackup.sh: FAILED, THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max}\n"
+        echo "letsbackup.sh: FAILED, THRESHOLD VALUE NOT IN RANGE! THRESHOLD: ${SPACE_THRESHOLD} RANGE: ${min}-${max}"
         exit 1
     fi
 }
@@ -243,12 +252,12 @@ backup_encrypt() {
     local temp_output_file="$(mktemp --suffix=backupshOUTPUT$(date +%Y-%m-%d_%T))"
 
     log "INFO" "Start encrypt process... Backup Name: ${BACKUP_NAME}"
-    printf "letsbackup.sh: INFO, Start encrypt process...\n"
+    echo "letsbackup.sh: INFO, Start encrypt process..."
     gpg --armor --encrypt --recipient "${GPG_KEY}" "${BACKUP_DIR}/${BACKUP_NAME}" > /dev/null 2> "${temp_output_file}"
     check_step_for_falure "CRITICAL" "ENCRYPT PROCESS WITH: GPG FAILED! EXIT MORE:\n" "${temp_output_file}"
 
     log "INFO" "Encrypt process SUCCESS! Info: backup=\"${BACKUP_DIR}/${BACKUP_NAME}\", encryptBackupName=\"${BACKUP_NAME}.asc\""
-    printf "letsbackup.sh: INFO, Encrypt process SUCCESS! Info: backup=\"${BACKUP_DIR}/${BACKUP_NAME}\", encryptBackupName=\"${BACKUP_NAME}.asc\"\n"
+    echo "letsbackup.sh: INFO, Encrypt process SUCCESS! Info: backup=\"${BACKUP_DIR}/${BACKUP_NAME}\", encryptBackupName=\"${BACKUP_NAME}.asc\""
 
     rm -rf "${temp_output_file}" &> /dev/null
 }
@@ -260,12 +269,12 @@ s3_send() {
     local send_backup_name="${1}"
 
     log "INFO" "Start send to s3 process... Bucket Name: ${BUCKET}"
-    printf "letsbackup.sh: INFO, Start send to s3 process...\n"
+    echo "letsbackup.sh: INFO, Start send to s3 process..."
     s3cmd put "${BACKUP_DIR}/${1}" s3://"${BUCKET}"/"${1}" 2> "${temp_output_file}" > /dev/null
     check_step_for_falure "CRITICAL" "SEND BACKUP TO S3 FAILED! EXIT MORE:\n" "${temp_output_file}"
 
     log "INFO" "Send backup process SUCCESS! Info: bucket=${BUCKET}, backupNameInBucket=${1}"
-    printf "letsbackup.sh: INFO, Send backup process SUCCESS!\n"
+    echo "letsbackup.sh: INFO, Send backup process SUCCESS!"
 
     rm -rf "${temp_output_file}" &> /dev/null
 
@@ -277,14 +286,14 @@ s3cmd_conf_validate() {
         if [[ ! -r ${S3CMD_CONF} ]]; then
 
             log "CRITICAL" "NOT PERMISSION TO READ CONF FILE: ${S3CMD_CONF} s3cmd! EXIT"
-            printf "letsbackup.sh: FAILED, NOT PERMISSION TO READ CONF FILE: ${S3CMD_CONF} s3cmd!\n" >&2
+            echo "letsbackup.sh: FAILED, NOT PERMISSION TO READ CONF FILE: ${S3CMD_CONF} s3cmd!" >&2
             exit 1
         fi
         s3cmd --config="${S3CMD_CONF}" &> /dev/null
         return 0
     fi
     log "CRITICAL" "NOT FOUND CONF FILE ${S3CMD_CONF} s3cmd! EXIT"
-    printf "letsbackup.sh: FAILED, NOT FOUND s3cmd CONFIG!\n" >&2
+    echo "letsbackup.sh: FAILED, NOT FOUND s3cmd CONFIG!" >&2
     exit 1
 }
 
@@ -316,13 +325,13 @@ while getopts ":s:b:n:hl:g:dSf:B:ct:" opt; do
            usage
         ;;
        \?)
-           printf "letsbackup.sh: Failed, unknown option [ -$OPTARG ]\n" >&2
-           printf "Use: [ -h ] for more information\n" >&2
+           echo "letsbackup.sh: Failed, unknown option [ -$OPTARG ]" >&2
+           echo "Use: [ -h ] for more information" >&2
            exit 1
         ;;
         :)
-           printf "letsbackup.sh: Failed, option [ -$OPTARG ] needs at argument\n" >&2
-           printf "Use: [ -h ] for more information\n" >&2
+           echo "letsbackup.sh: Failed, option [ -$OPTARG ] needs at argument" >&2
+           echo "Use: [ -h ] for more information" >&2
            exit 1
         ;;
     esac
@@ -347,13 +356,13 @@ if [[ -n ${GPG_KEY} ]]; then
     if [[ ${UNENCRYPT_BACKUP_DEL} = "TRUE" ]]; then
 
         log "INFO" "Start unencrypted backup remove process..."
-        printf "letsbackup.sh: INFO, Start unencrypted backup remove process...\n"
+        echo "letsbackup.sh: INFO, Start unencrypted backup remove process..."
 
         rm -rf "${BACKUP_DIR}/${BACKUP_NAME}" &> /dev/null
         check_step_for_falure "WARNING" "Backup: <${BACKUP_DIR}/${BACKUP_NAME}> remove process failed!"
 
         log "INFO" "Remove process success! Removed: <${BACKUP_DIR/${BACKUP_NAME}}>"
-        printf "letsbackup.sh: INFO, Unencrypted backup remove SUCCESS!\n"
+        echo "letsbackup.sh: INFO, Unencrypted backup remove SUCCESS!"
     fi
 fi
 
@@ -364,7 +373,7 @@ if [[ ${S3_SEND} = "TRUE" ]]; then
     if [[ ${SEND_ENCRYPT_BACKUP} = "TRUE" ]]; then
         if [[ -z ${GPG_KEY} ]]; then
             log "CRITICAL" "ENCRYPT BACKUP NOT SEND! NEEDS GPG PROCESS! EXIT"
-            printf "letsbackup.sh: FAILED, ENCRYPT BACKUP NOT SEND! NEEDS GPG PROCESS!"
+            echo "letsbackup.sh: FAILED, ENCRYPT BACKUP NOT SEND! NEEDS GPG PROCESS!"
             exit 1
         fi
         encrypt_backupname_to_send="${BACKUP_NAME}.asc"
