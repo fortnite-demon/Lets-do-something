@@ -46,6 +46,13 @@ Details:
                                                                      |
                                    Default: YYYY-dd-mm_HH-MM-SS      |  
     -----------------------------------------------------------------+
+    [ -t <percent> (1-100) ]:      You can set a threshold value on  | optional
+                                   the disk at which new backups     |
+                                   will no longer be created.        |
+                                   By default, copies will not be    |
+                                   created if there is no free space |
+                                   on the disk at all.               |
+    -----------------------------------------------------------------+
 
                        Backup with encrypted:
 
@@ -282,6 +289,8 @@ while getopts ":s:b:n:hl:g:dSf:B:c" opt; do
         B) BUCKET="${OPTARG}"
         ;;
         c) SEND_ENCRYPT_BACKUP="TRUE"
+        ;;
+        t) SPACE_THRESHOLD="${OPTARG}"
         ;;
         h)
            usage
