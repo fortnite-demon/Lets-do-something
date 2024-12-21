@@ -4,7 +4,7 @@ set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "date")
+DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl")
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
