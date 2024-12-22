@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+set -ox pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
@@ -207,6 +207,11 @@ backup() {
     log "INFO" "Start backup process..."
     echo "letsbackup.sh: INFO, Start backup process..."
 
+    test -f "${BACKUP_DIR}/${BACKUP_NAME}" && { \ 
+        log "CRITICAL" "BACKUP WITH NAME: ${BACKUP_NAME} already exists in ${BACKUP_DIR} EXIT";
+        echo "letsbackup.sh: FAILED, BACKUP WITH NAME: ${BACKUP_NAME} already exists in ${BACKUP_DIR}";
+        exit 1;
+    }
 
     tar -czvf ${BACKUP_DIR}/${BACKUP_NAME} -C ${SOURCE_DIR} . 2> ${temp_output_file} > /dev/null
     check_step_for_falure "CRITICAL" "BACKUP PROCESS FAILURE! EXIT MORE:\n" "${temp_output_file}"
@@ -227,7 +232,7 @@ disk_space_threshold_check() {
     local disk_space_usage_percent="$(echo "(1 - ${current_disk_avail} / ${current_disk_size}) * 100" | bc -l | awk -F. '{print $1}')"
 
     if [[ ${disk_space_usage_percent} -ge ${SPACE_THRESHOLD} ]]; then
-        log "CRITICAL" "NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}%% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB EXIT"
+        log "CRITICAL" "NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB EXIT"
         echo "letsbackup.sh: FAILED, NEW BACKUP WILL NOT BE CREATED, THE THRESHOLD: ${SPACE_THRESHOLD}% HAS BEEN REACHED! AVAIL: $(expr $current_disk_avail / 1024 / 1024)GB"
         exit 1
     fi
