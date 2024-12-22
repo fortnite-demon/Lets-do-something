@@ -125,16 +125,16 @@ log_file_validate() {
 
     if [[ -f ${LOG_FILE_PATH} ]]; then
         if [[ ! -w ${LOG_FILE_PATH} ]]; then
-            echo "letsbackup.sh: FAILED, <${LOG_FILE_PATH}> not access write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
+            echo -e "letsbackup.sh: FAILED, <${LOG_FILE_PATH}> not access write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
             exit 1
         fi
         return 0
     fi
     if [[ -d ${LOG_FILE_PATH} ]]; then
-        echo "letsbakcup.sh: FAILED, <${LOG_FILE_PATH}> is directory!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
+        echo -e "letsbakcup.sh: FAILED, <${LOG_FILE_PATH}> is directory!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
         exit 1
     elif [[ ! -w ${logfile_dir_name} ]]; then
-        echo "letsbakcup.sh: FAILED, dir <${logfile_dir_name}> for logfile not access to write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
+        echo -e "letsbakcup.sh: FAILED, dir <${logfile_dir_name}> for logfile not access to write!\nLOG:${temp_output_file}" | tee -a ${temp_output_file} >&2
         exit 1
     fi
 
@@ -206,6 +206,8 @@ backup() {
 
     log "INFO" "Start backup process..."
     echo "letsbackup.sh: INFO, Start backup process..."
+
+
     tar -czvf ${BACKUP_DIR}/${BACKUP_NAME} -C ${SOURCE_DIR} . 2> ${temp_output_file} > /dev/null
     check_step_for_falure "CRITICAL" "BACKUP PROCESS FAILURE! EXIT MORE:\n" "${temp_output_file}"
 
