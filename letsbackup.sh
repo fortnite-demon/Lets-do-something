@@ -209,8 +209,10 @@ backup() {
     tar -czvf ${BACKUP_DIR}/${BACKUP_NAME} -C ${SOURCE_DIR} . 2> ${temp_output_file} > /dev/null
     check_step_for_falure "CRITICAL" "BACKUP PROCESS FAILURE! EXIT MORE:\n" "${temp_output_file}"
 
-    log "INFO" "Backup process SUCCESS! Backup Info: name=\"${BACKUP_DIR}/${BACKUP_NAME}\", size=\"$(ls -tlh | nl -nln | awk '/^2 /{print $6; exit}')\""
-    echo "letsbackup.sh: INFO, Backup process SUCCESS!"
+    backup_hash="$(sha256sum ${BACKUP_DIR}/${BACKUP_NAME} | awk '{print $1}')"
+
+    log "INFO" "Backup process SUCCESS! Backup Info: name=\"${BACKUP_DIR}/${BACKUP_NAME}\", size=\"$(ls -tlh | nl -nln | awk '/^2 /{print $6; exit}')\" sha256=\"${backup_hash}\""
+    echo "letsbackup.sh: INFO, Backup process SUCCESS! sha256=\"${backup_hash}\""
 
     rm -rf "${temp_output_file}" &> /dev/null
 
