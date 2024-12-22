@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+set -ox pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl" "sha256sum") # "tar" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl" "sha256sum"
+DEPENDENCIES=("tar" "dirname" "date" "tee" "mktemp" "sha256sum" "awk" "nl" "df" "bc" "gzip" "grep") # "gpg" "s3cmd"
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
@@ -180,6 +180,11 @@ check_dependencies() {
     done
 }
 
+dependence_add() {
+    local new_dependencies="${@}"
+    echo "${new_dependencies[@]}"
+}
+
 check_step_for_falure() {
     local severity="${1}"
     local message="${2}"
@@ -317,10 +322,18 @@ while getopts ":s:b:n:hl:g:dSf:B:ct:" opt; do
         l) LOG_FILE_PATH="${OPTARG}"
         ;; 
         g) GPG_KEY="${OPTARG}"
+           NEW_DEPENDENCIES="$(dependence_add ${DEPENDENCIES[@]} "gpg" )"
+           DEPENDENCIES=()
+           DEPENDENCIES="${NEW_DEPENDENCIES[@]}"
+           NEW_DEPENDENCIES=()
         ;;
         d) UNENCRYPT_BACKUP_DEL="TRUE"
         ;;
         S) S3_SEND="TRUE"
+           NEW_DEPENDENCIES="$(dependence_add ${DEPENDENCIES[@]} "s3cmd" )"
+           DEPENDENCIES=()
+           DEPENDENCIES="${NEW_DEPENDENCIES[@]}"
+           NEW_DEPENDENCIES=()
         ;;
         f) S3CMD_CONF="${OPTARG}"
         ;;
@@ -370,7 +383,7 @@ if [[ -n ${GPG_KEY} ]]; then
         rm -rf "${BACKUP_DIR}/${BACKUP_NAME}" &> /dev/null
         check_step_for_falure "WARNING" "Backup: <${BACKUP_DIR}/${BACKUP_NAME}> remove process failed!"
 
-        log "INFO" "Remove process success! Removed: <${BACKUP_DIR/${BACKUP_NAME}}>"
+        log "INFO" "Remove process success! Removed: <${BACKUP_DIR}/${BACKUP_NAME}>"
         echo "letsbackup.sh: INFO, Unencrypted backup remove SUCCESS!"
     fi
 fi
