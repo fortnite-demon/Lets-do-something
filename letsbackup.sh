@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -ox pipefail
+set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
-DEPENDENCIES=("tar" "printf" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl" "sha256sum")
+DEPENDENCIES=("tar" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl" "sha256sum") # "tar" "wc" "date" "gzip" "gpg" "s3cmd" "tee" "bc" "df" "nl" "sha256sum"
 LOG_FILE_PATH="/var/log/backup.log"
 BACKUP_NAME="$(date +%Y-%d-%m_%H-%M-%S).tar.gz"
 GPG_KEY=""
@@ -16,7 +16,7 @@ SEND_ENCRYPT_BACKUP="FALSE"
 SPACE_THRESHOLD=100
 
 usage() {
-    printf "
+    echo -e "
 Usage:
     backup.sh [ ...OPTIONS... [ ARG ] ]
 
