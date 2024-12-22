@@ -11,19 +11,27 @@ This script automates the process of creating, encrypting, and uploading backups
 
 ## Dependencies
 
-Ensure the following dependencies are installed on your system:
+Ensure the following dependencies are installed on your system, for basic work:
 
 - `tar`
-- `printf`
-- `wc`
+- `dirname`
 - `date`
+- `tee`
+- `mktemp`
+- `sha256sum`
+- `awk`
+- `nl`
+- `df`
+- `bc`
 - `gzip`
+- `grep`
+
+For extend work (encrypt and push in S3):
+
 - `gpg`
 - `s3cmd`
-- `df`
-- `awk`
-- `bc`
-- `nl`
+
+*If you don't have the necessary dependencies, letsbakcup will let you know.*
 
 ## The specifics of the work
 
