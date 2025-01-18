@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ox pipefail
+set -o pipefail
 
 BACKUP_DIR=""
 SOURCE_DIR=""
